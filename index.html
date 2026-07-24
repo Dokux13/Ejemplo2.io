@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concesiones de Salmonicultura · Chile</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== ESTILOS (igual que antes) ===== */
+    :root {
+      --bg: #1f4400;
+      --bg-panel: #572802;
+      --bg-panel-2: #1C2A37;
+      --ink: #E8EDF2;
+      --muted: #8CA0B3;
+      --muted-2: #5D7284;
+      --line: #26333F;
+      --aqua: #2E9CA6;
+      --salmon: #b15200;
+      --orange: #D5514A;
+      --font-display: 'Barlow Condensed', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 00; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); }
+    ::selection { background: var(--salmon); color: #0F1720; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-panel); }
+    ::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 4px; }
+
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 28px 28px 48px; }
+
+    header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 24px; border-bottom: 1px solid var(--line);
+      padding-bottom: 20px; margin-bottom: 22px; flex-wrap: wrap;
+    }
+    .eyebrow {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--aqua); margin: 0 0 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .eyebrow::before {
+      content: ''; width: 7px; height: 7px; background: var(--aqua);
+      display: inline-block; box-shadow: 0 0 0 3px rgba(46, 156, 166, .18);
+    }
+    h1 {
+      font-family: var(--font-display); font-weight: 700; font-size: 44px;
+      line-height: 1; margin: 0 0 6px; letter-spacing: .01em;
+    }
+    h1 em { font-style: normal; color: var(--salmon); }
+    .subtitle { color: var(--muted); font-size: 14.5px; max-width: 680px; line-height: 1.5; margin: 0; }
+    .meta { text-align: right; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted-2); line-height: 1.7; }
+    .meta b { color: var(--muted); font-weight: 500; }
+
+    .kpis {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
+      background: var(--line); border: 1px solid var(--line); margin-bottom: 22px;
+    }
+    .kpi { background: var(--bg-panel); padding: 16px 18px; }
+    .kpi .label {
+      font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted-2); margin-bottom: 8px;
+    }
+    .kpi .value {
+      font-family: var(--font-display); font-size: 32px; font-weight: 600;
+      line-height: 1; color: var(--ink);
+    }
+    .kpi .value span { font-size: 16px; color: var(--muted); font-weight: 500; }
+    .kpi .sub { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+    .kpi.accent .value { color: var(--aqua); }
+    .kpi.highlight .value { color: var(--salmon); }
+
+    .grid {
+      display: grid; grid-template-columns: 1fr 380px; gap: 16px; margin-bottom: 16px;
+    }
+    .panel { background: var(--bg-panel); border: 1px solid var(--line); }
+    .panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+    }
+    .panel-head h2 {
+      font-family: var(--font-display); font-size: 19px; font-weight: 600;
+      margin: 0; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .panel-head .count {
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted-2);
+    }
+
+    #map {
+      height: 580px; width: 100%; background: #0c131a;
+    }
+    #map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.7); }
+    #map .leaflet-marker-pane, #map .leaflet-popup-pane, #map .leaflet-overlay-pane { filter: none; }
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-panel-2); color: var(--ink); border-radius: 2px;
+      font-family: var(--font-body); border: 1px solid var(--line);
+    }
+    .leaflet-popup-tip { background: var(--bg-panel-2); }
+    .leaflet-popup-content { margin: 12px 14px; font-size: 12.5px; line-height: 1.6; }
+    .pop-title {
+      font-family: var(--font-display); font-size: 16px; font-weight: 600;
+      color: var(--salmon); text-transform: uppercase; margin-bottom: 2px;
+    }
+    .pop-row { display: flex; gap: 6px; }
+    .pop-row b { color: var(--muted); font-weight: 500; min-width: 70px; }
+    .leaflet-container { font-family: var(--font-body); }
+
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .filters select {
+      background: var(--bg-panel-2); color: var(--ink); border: 1px solid var(--line);
+      font-family: var(--font-mono); font-size: 11.5px; padding: 7px 9px;
+      flex: 1; min-width: 130px; cursor: pointer;
+    }
+    .filters select:focus { outline: 1px solid var(--aqua); }
+
+    /* ===== LEYENDA MEJORADA ===== */
+    .legend {
+      display: flex; gap: 18px; padding: 10px 18px; flex-wrap: wrap;
+      border-top: 1px solid var(--line); font-family: var(--font-mono);
+      font-size: 11px; color: var(--muted); align-items: center;
+    }
+    .legend .gradient-bar {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .legend .gradient {
+      width: 120px; height: 10px;
+      background: linear-gradient(to right, #4CAF50, #FFEB3B, #FF9800, #F44336);
+      border-radius: 4px;
+      border: 1px solid var(--line);
+    }
+    .legend .gradient-label {
+      display: flex; justify-content: space-between; width: 120px;
+      font-size: 9px; color: var(--muted-2);
+    }
+
+    .ranklist { max-height: 580px; overflow-y: auto; }
+    .rank-row {
+      display: grid; grid-template-columns: 28px 1fr 52px;
+      align-items: center; gap: 10px; padding: 9px 18px;
+      border-bottom: 1px solid var(--line); cursor: pointer;
+      transition: background .12s;
+    }
+    .rank-row:hover { background: var(--bg-panel-2); }
+    .rank-row.active { background: var(--bg-panel-2); box-shadow: inset 3px 0 0 var(--aqua); }
+    .rank-num {
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted-2);
+    }
+    .rank-row:nth-child(-n+3) .rank-num { color: var(--salmon); font-weight: 600; }
+    .rank-name { font-size: 12.5px; font-weight: 500; }
+    .rank-region {
+      font-family: var(--font-mono); font-size: 9px; color: var(--muted-2);
+      text-transform: uppercase;
+    }
+    .rank-bar-track { height: 4px; background: var(--line); margin-top: 5px; width: 100%; }
+    .rank-bar-fill { height: 100%; background: linear-gradient(90deg, var(--aqua), var(--salmon)); }
+    .rank-sub {
+      font-family: var(--font-mono); font-size: 9.5px; color: var(--muted-2);
+      margin-top: 4px;
+    }
+    .rank-score {
+      font-family: var(--font-mono); font-size: 15px; text-align: right;
+      color: var(--ink);
+    }
+
+    .charts {
+      display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 16px;
+    }
+    .chart-box { padding: 16px 18px 20px; }
+    .chart-box canvas { max-height: 260px; }
+
+    .insights {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;
+    }
+    .insight {
+      padding: 18px; border-left: 2px solid var(--aqua);
+      background: var(--bg-panel); border-top: 1px solid var(--line);
+      border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    }
+    .insight h3 {
+      font-family: var(--font-display); font-size: 15px; text-transform: uppercase;
+      letter-spacing: .03em; margin: 0 0 8px; color: var(--aqua); font-weight: 600;
+    }
+    .insight p { font-size: 12.5px; line-height: 1.65; color: var(--muted); margin: 0; }
+    .insight b { color: var(--ink); font-weight: 600; }
+
+    footer {
+      margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
+      font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-2);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+
+    #loadOverlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 32, .96); z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px; font-family: var(--font-mono);
+      font-size: 12px; color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--line);
+      border-top-color: var(--aqua); border-radius: 50%;
+      animation: spin .9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .errbox {
+      background: #2a1518; border: 1px solid var(--orange);
+      color: #f0b8b5; padding: 14px 16px; font-size: 12px; line-height: 1.6;
+      max-width: 560px; font-family: var(--font-body);
+    }
+    .errbox code { font-family: var(--font-mono); color: var(--salmon); }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .charts { grid-template-columns: 1fr; }
+      .insights { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      h1 { font-size: 32px; }
+      #map { height: 440px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap" id="appWrap" style="display:none;">
+
+  <header>
+    <div>
+      <p class="eyebrow">🐟 Sector Acuícola · Chile 2026</p>
+      <h1 style="text-align: left; color: #4FB6A8;">Concesiones de <em style="color: #E08D45;">Salmonicultura</em></h1>
+      <p class="subtitle" id="subtitle">Diagnóstico de las concesiones de salmonicultura — los puntos <b  style="color:#F44336;">rojos</b> indican mayor biomasa y los <b style="color:#4CAF50;">verdes</b> menor.</p>
+    </div>
+    <div class="meta">
+      <div><b>Fuente:</b> Subsecretaría de Pesca y Acuicultura (SUBPESCA)</div>
+      <div><b>Diseño:</b> Terram</div>
+      <div id="metaCobertura"><b>Cobertura:</b> 2 regiones · 12 comunas</div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="label">Concesiones</div><div class="value" id="kpiTotal">0</div><div class="sub">bajo el filtro actual</div></div>
+    <div class="kpi highlight"><div class="label">Biomasa total</div><div class="value" id="kpiBiomasa">0 <span>ton</span></div><div class="sub">capacidad instalada</div></div>
+    <div class="kpi"><div class="label">Superficie total</div><div class="value" id="kpiSuperficie">0 <span>ha</span></div><div class="sub">de concesiones</div></div>
+    <div class="kpi"><div class="label">Empresa líder</div><div class="value" style="font-size:22px;" id="kpiEmpresa">—</div><div class="sub" id="kpiEmpresaSub">0 concesiones</div></div>
+    <div class="kpi accent"><div class="label">Región con más concesiones</div><div class="value" style="font-size:22px;" id="kpiRegion">—</div><div class="sub" id="kpiRegionSub">0 concesiones</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Mapa de Concesiones</h2>
+        <span class="count" id="mapCount">0 de 0 concesiones</span>
+      </div>
+      <div class="filters">
+        <select id="fRegion"><option value="">Todas las regiones</option></select>
+        <select id="fComuna"><option value="">Todas las comunas</option></select>
+        <select id="fEmpresa"><option value="">Todas las empresas</option></select>
+        <select id="fEspecie"><option value="">Todas las especies</option></select>
+      </div>
+      <div id="map" class="leaflet-container"></div>
+      <!-- ===== LEYENDA MEJORADA ===== -->
+      <div class="legend" id="legend">
+        <span>Biomasa (ton):</span>
+        <div class="gradient-bar">
+          <span style="color:#4CAF50;">●</span>
+          <div class="gradient"></div>
+          <span style="color:#F44336;">●</span>
+        </div>
+        <span id="legendMin">0</span>
+        <span>—</span>
+        <span id="legendMax">20.000+</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Ranking · Biomasa</h2>
+        <span class="count" id="rankCount">0 comunas</span>
+      </div>
+      <div class="ranklist" id="ranklist">
+        <div style="padding:16px 18px;color:var(--muted-2);font-size:12px;">Cargando datos...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel charts">
+    <div class="chart-box">
+      <div class="panel-head" style="padding:0 0 10px;border:none;"><h2 style="font-size:15px;">Biomasa por Empresa</h2></div>
+      <canvas id="chartEmpresas"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="panel-head" style="padding:0 0 10px;border:none;"><h2 style="font-size:15px;">Distribución por Especie</h2></div>
+      <canvas id="chartEspecies"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="panel-head" style="padding:0 0 10px;border:none;"><h2 style="font-size:15px;">Concesiones por Región</h2></div>
+      <canvas id="chartRegion"></canvas>
+    </div>
+  </div>
+
+  <div class="insights" id="insights">
+    <div class="insight">
+      <h3>Concentración empresarial</h3>
+      <p>Las <b>3 principales empresas</b> concentran más del <b>70%</b> de la biomasa total bajo el filtro actual.</p>
+    </div>
+    <div class="insight">
+      <h3>Especies dominantes</h3>
+      <p>El <b>Salmón del Atlántico</b> y la <b>Trucha Arcoíris</b> representan más del <b>80%</b> de las concesiones activas.</p>
+    </div>
+    <div class="insight">
+      <h3>Región de Aysén</h3>
+      <p><b>Aysén</b> concentra más del <b>65%</b> de la superficie total de concesiones, siendo el principal polo salmonicultor del país.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Índice de biomasa comunal = 50% biomasa total + 30% número de concesiones + 20% superficie promedio, normalizado 0–100.</span>
+    <span id="footTotal">0 registros geolocalizados</span>
+  </footer>
+
+</div>
+
+<div id="loadOverlay">
+  <div class="spinner" id="loadSpinner"></div>
+  <div id="loadMsg">Cargando concesiones de salmonicultura…</div>
+  <div id="loadErr"></div>
+  <div id="dropZone" style="display:none;max-width:520px;width:90%;">
+    <div style="border:2px dashed var(--muted-2);padding:34px 24px;text-align:center;background:var(--bg-panel);cursor:pointer;" id="dropInner">
+      <div style="font-family:var(--font-display);font-size:20px;text-transform:uppercase;color:var(--aqua);margin-bottom:8px;">Cargar GeoJSON manualmente</div>
+      <div style="font-family:var(--font-body);font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
+        No fue posible leer el archivo automáticamente.<br />
+        Arrastra aquí el archivo <b style="color:var(--ink);">concesiones.geojson</b><br />o haz clic para seleccionarlo.
+      </div>
+      <button id="pickBtn" style="padding:10px 22px;border:none;background:var(--aqua);color:#0F1720;font-family:var(--font-display);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;">Seleccionar archivo</button>
+      <input type="file" id="fileInput" accept=".geojson,.json" style="display:none;" />
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// ============================================================
+//  DASHBOARD DE SALMONICULTURA - CON PALETA DE COLORES POR BIOMASA
+// ============================================================
+
+let features = [];
+let map, markersLayer, chartEmpresas, chartEspecies, chartRegion;
+let minBioGlobal = 0, maxBioGlobal = 1;
+
+function fmt(n) { return n?.toLocaleString('es-CL') ?? '0'; }
+function round(n, d = 1) { return Math.round(n * 10 ** d) / 10 ** d; }
+
+// ===== FUNCIÓN DE COLOR: ROJO = MÁS BIOMASA, VERDE = MENOS =====
+function getBiomasaColor(biomasa, min, max) {
+  if (max <= min) return '#4CAF50';
+  const t = Math.max(0, Math.min(1, (biomasa - min) / (max - min)));
+  // Verde (#4CAF50) → Amarillo (#FFEB3B) → Naranja (#FF9800) → Rojo (#F44336)
+  const r = Math.round(76 + (255 - 76) * t);
+  const g = Math.round(175 - 175 * t * 0.85);
+  const b = Math.round(80 - 80 * t * 0.9);
+  return `rgb(${r}, ${Math.max(0, g)}, ${Math.max(0, b)})`;
+}
+
+function getMainSpecies(prop) {
+  if (!prop.ESPECIES) return 'Sin dato';
+  const list = prop.ESPECIES.split(',').map(s => s.trim()).filter(s => s);
+  return list[0] || 'Sin dato';
+}
+
+async function loadGeoJSON() {
+  try {
+       const res = await fetch('puntos.geojson');
+    if (!res.ok) throw new Error('Archivo no encontrado');
+    const data = await res.json();
+    processData(data);
+  } catch (err) {
+    document.getElementById('loadSpinner').style.display = 'none';
+    document.getElementById('loadMsg').style.display = 'none';
+    document.getElementById('dropZone').style.display = 'block';
+    setupManualLoad();
+  }
+}
+
+function processData(geojson) {
+  if (!geojson.features || geojson.features.length === 0) {
+    showError('El GeoJSON no contiene features.');
+    return;
+  }
+  features = geojson.features;
+  // Calcular min/max global de biomasa
+  const biomasas = features.map(f => f.properties.Total_biom || 0);
+  minBioGlobal = Math.min(...biomasas);
+  maxBioGlobal = Math.max(...biomasas);
+  if (maxBioGlobal === minBioGlobal) maxBioGlobal = minBioGlobal + 1;
+
+  document.getElementById('loadOverlay').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  // Actualizar leyenda
+  document.getElementById('legendMin').textContent = fmt(Math.round(minBioGlobal));
+  document.getElementById('legendMax').textContent = fmt(Math.round(maxBioGlobal)) + '+';
+  initApp();
+}
+
+function showError(msg) {
+  document.getElementById('loadSpinner').style.display = 'none';
+  document.getElementById('loadMsg').style.display = 'none';
+  document.getElementById('loadErr').innerHTML = `<div class="errbox">${msg}</div>`;
+}
+
+function setupManualLoad() {
+  const inner = document.getElementById('dropInner');
+  const input = document.getElementById('fileInput');
+  document.getElementById('pickBtn').addEventListener('click', e => { e.stopPropagation(); input.click(); });
+  inner.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    if (input.files.length) handleManualFile(input.files[0]);
+  });
+  ['dragover','dragenter'].forEach(ev => inner.addEventListener(ev, e => {
+    e.preventDefault(); inner.style.borderColor = '#E08D45';
+  }));
+  ['dragleave','drop'].forEach(ev => inner.addEventListener(ev, e => {
+    e.preventDefault(); inner.style.borderColor = '';
+  }));
+  inner.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) handleManualFile(e.dataTransfer.files[0]);
+  });
+}
+
+function handleManualFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      processData(data);
+    } catch (err) {
+      showError('El archivo no es un GeoJSON válido: ' + err.message);
+    }
+  };
+  reader.onerror = () => showError('No se pudo leer el archivo.');
+  reader.readAsText(file);
+}
+
+function initApp() {
+  const regiones = [...new Set(features.map(f => f.properties.REGION))].filter(Boolean).sort();
+  const comunas = [...new Set(features.map(f => f.properties.COMUNA))].filter(Boolean).sort();
+  const empresas = [...new Set(features.map(f => f.properties.TITULAR))].filter(Boolean).sort();
+  const especies = [...new Set(features.map(f => getMainSpecies(f.properties)))].filter(Boolean).sort();
+
+  fillSelect('fRegion', regiones);
+  fillSelect('fComuna', comunas);
+  fillSelect('fEmpresa', empresas);
+  fillSelect('fEspecie', especies);
+
+  document.getElementById('metaCobertura').innerHTML =
+    `<b>Cobertura:</b> ${regiones.length} regiones · ${comunas.length} comunas`;
+  document.getElementById('footTotal').textContent = fmt(features.length) + ' concesiones';
+
+  map = L.map('map', { scrollWheelZoom: true, preferCanvas: true });
+  map.fitBounds([[-47.5, -76.0], [-41.0, -71.0]]);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    subdomains: 'abc', maxZoom: 19
+  }).addTo(map);
+  document.getElementById('map').classList.add('dark-tiles');
+  markersLayer = L.layerGroup().addTo(map);
+
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#8CA0B3';
+  Chart.defaults.font.size = 11;
+
+  chartEmpresas = new Chart(document.getElementById('chartEmpresas'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderRadius: 1, maxBarThickness: 18 }] },
+    options: {
+      indexAxis: 'y',
+      animation: { duration: 280 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#26333F' }, ticks: { color: '#5D7284' }, beginAtZero: true },
+        y: { grid: { display: false }, ticks: { color: '#8CA0B3', font: { size: 10.5 } } }
+      }
+    }
+  });
+
+  chartEspecies = new Chart(document.getElementById('chartEspecies'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#16212C', borderWidth: 3 }] },
+    options: {
+      animation: { duration: 280 },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } } },
+      cutout: '62%'
+    }
+  });
+
+  chartRegion = new Chart(document.getElementById('chartRegion'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: '#2E9CA6', borderRadius: 2, maxBarThickness: 46 }] },
+    options: {
+      animation: { duration: 280 },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#26333F' }, ticks: { color: '#5D7284' }, beginAtZero: true }
+      }
+    }
+  });
+
+  document.getElementById('fRegion').addEventListener('change', () => {
+    refreshComunas();
+    applyFilters();
+  });
+  ['fComuna','fEmpresa','fEspecie'].forEach(id =>
+    document.getElementById(id).addEventListener('change', applyFilters)
+  );
+
+  applyFilters();
+  setTimeout(() => map.invalidateSize(), 300);
+}
+
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  const current = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  values.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  });
+  if (values.includes(current)) sel.value = current;
+  else sel.value = '';
+}
+
+function refreshComunas() {
+  const region = document.getElementById('fRegion').value;
+  const filtered = region
+    ? features.filter(f => f.properties.REGION === region)
+    : features;
+  const comunas = [...new Set(filtered.map(f => f.properties.COMUNA))].filter(Boolean).sort();
+  fillSelect('fComuna', comunas);
+}
+
+function applyFilters() {
+  const fRegion = document.getElementById('fRegion').value;
+  const fComuna = document.getElementById('fComuna').value;
+  const fEmpresa = document.getElementById('fEmpresa').value;
+  const fEspecie = document.getElementById('fEspecie').value;
+
+  const filtered = features.filter(f => {
+    const p = f.properties;
+    if (fRegion && p.REGION !== fRegion) return false;
+    if (fComuna && p.COMUNA !== fComuna) return false;
+    if (fEmpresa && p.TITULAR !== fEmpresa) return false;
+    if (fEspecie && getMainSpecies(p) !== fEspecie) return false;
+    return true;
+  });
+
+  // Recalcular min/max para los datos filtrados
+  const bioFiltradas = filtered.map(f => f.properties.Total_biom || 0);
+  const minBio = bioFiltradas.length > 0 ? Math.min(...bioFiltradas) : 0;
+  const maxBio = bioFiltradas.length > 0 ? Math.max(...bioFiltradas) : 1;
+
+  updateMap(filtered, minBio, maxBio);
+  updateKPIs(filtered);
+  updateRanking(filtered);
+  updateCharts(filtered);
+  updateInsights(filtered);
+}
+
+function updateMap(data, minBio, maxBio) {
+  markersLayer.clearLayers();
+  if (maxBio === minBio) maxBio = minBio + 1;
+
+  data.forEach(f => {
+    const p = f.properties;
+    const coords = f.geometry.coordinates;
+    const biomasa = p.Total_biom || 0;
+    const radius = 3 + Math.min(10, (biomasa / maxBio) * 12);
+    const color = getBiomasaColor(biomasa, minBio, maxBio);
+    const marker = L.circleMarker([coords[1], coords[0]], {
+      radius: radius,
+      color: '#0F1720',
+      weight: 1.5,
+      fillColor: color,
+      fillOpacity: 0.85
+    });
+    marker.bindPopup(`
+      <div class="pop-title">${p.TOPONIMIO || p.COMUNA}</div>
+      <div class="pop-row"><b>Comuna</b><span>${p.COMUNA}</span></div>
+      <div class="pop-row"><b>Región</b><span>${p.REGION}</span></div>
+      <div class="pop-row"><b>Empresa</b><span>${p.TITULAR}</span></div>
+      <div class="pop-row"><b>Especies</b><span>${p.ESPECIES || 'Sin dato'}</span></div>
+      <div class="pop-row"><b style="color:${color};">● Biomasa</b><span>${fmt(p.Total_biom)} ton</span></div>
+      <div class="pop-row"><b>Superficie</b><span>${p.SUPERFICIE || 0} ha</span></div>
+    `);
+    markersLayer.addLayer(marker);
+  });
+  document.getElementById('mapCount').textContent = `${fmt(data.length)} de ${fmt(features.length)} concesiones`;
+
+  if (data.length > 0) {
+    const lats = data.map(f => f.geometry.coordinates[1]);
+    const lons = data.map(f => f.geometry.coordinates[0]);
+    map.fitBounds([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], { padding: [40, 40] });
+  } else {
+    map.fitBounds([[-47.5, -76.0], [-41.0, -71.0]]);
+  }
+}
+
+function updateKPIs(data) {
+  const total = data.length;
+  const biomasa = data.reduce((s, f) => s + (f.properties.Total_biom || 0), 0);
+  const superficie = data.reduce((s, f) => s + (f.properties.SUPERFICIE || 0), 0);
+
+  const empCount = {};
+  const regCount = {};
+  data.forEach(f => {
+    const e = f.properties.TITULAR || 'Sin dato';
+    const r = f.properties.REGION || 'Sin dato';
+    empCount[e] = (empCount[e] || 0) + 1;
+    regCount[r] = (regCount[r] || 0) + 1;
+  });
+
+  const topEmp = Object.entries(empCount).sort((a, b) => b[1] - a[1])[0];
+  const topReg = Object.entries(regCount).sort((a, b) => b[1] - a[1])[0];
+
+  document.getElementById('kpiTotal').textContent = fmt(total);
+  document.getElementById('kpiBiomasa').innerHTML = fmt(Math.round(biomasa)) + ' <span>ton</span>';
+  document.getElementById('kpiSuperficie').innerHTML = fmt(round(superficie, 1)) + ' <span>ha</span>';
+  document.getElementById('kpiEmpresa').textContent = topEmp ? topEmp[0] : '—';
+  document.getElementById('kpiEmpresaSub').textContent = topEmp ? fmt(topEmp[1]) + ' concesiones' : '';
+  document.getElementById('kpiRegion').textContent = topReg ? topReg[0] : '—';
+  document.getElementById('kpiRegionSub').textContent = topReg ? fmt(topReg[1]) + ' concesiones' : '';
+}
+
+function updateRanking(data) {
+  const groups = {};
+  data.forEach(f => {
+    const p = f.properties;
+    const key = p.COMUNA || 'Sin dato';
+    if (!groups[key]) {
+      groups[key] = {
+        comuna: key,
+        region: p.REGION || 'Sin dato',
+        n: 0,
+        biomasa: 0,
+        superficie: 0
+      };
+    }
+    groups[key].n++;
+    groups[key].biomasa += p.Total_biom || 0;
+    groups[key].superficie += p.SUPERFICIE || 0;
+  });
+
+  const rows = Object.values(groups).map(g => ({
+    comuna: g.comuna,
+    region: g.region,
+    n: g.n,
+    biomasa: g.biomasa,
+    superficie: g.superficie,
+    score: Math.round((g.biomasa / 1000) * 10) / 10
+  }));
+
+  rows.sort((a, b) => b.biomasa - a.biomasa);
+  const maxBiomasa = rows.length > 0 ? rows[0].biomasa : 1;
+
+  const ranklist = document.getElementById('ranklist');
+  document.getElementById('rankCount').textContent = fmt(rows.length) + ' comunas';
+  ranklist.innerHTML = '';
+
+  if (rows.length === 0) {
+    ranklist.innerHTML = '<div style="padding:16px 18px;color:var(--muted-2);font-size:12px;">Ninguna comuna registra concesiones con estos filtros.</div>';
+    return;
+  }
+
+  rows.slice(0, 50).forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'rank-row';
+    const pct = maxBiomasa > 0 ? (c.biomasa / maxBiomasa * 100) : 0;
+    row.innerHTML = `
+      <div class="rank-num">${String(i + 1).padStart(2, '0')}</div>
+      <div>
+        <div class="rank-name">${c.comuna}</div>
+        <div class="rank-region">${c.region}</div>
+        <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+        <div class="rank-sub">${fmt(c.n)} concesiones · ${fmt(Math.round(c.biomasa))} ton · ${fmt(round(c.superficie, 1))} ha</div>
+      </div>
+      <div class="rank-score">${c.score}</div>
+    `;
+    row.addEventListener('click', () => {
+      document.getElementById('fRegion').value = c.region;
+      refreshComunas();
+      document.getElementById('fComuna').value = c.comuna;
+      applyFilters();
+    });
+    ranklist.appendChild(row);
+  });
+}
+
+function updateCharts(data) {
+  // Gráfico: Biomasa por Empresa
+  const empBio = {};
+  data.forEach(f => {
+    const e = f.properties.TITULAR || 'Sin dato';
+    empBio[e] = (empBio[e] || 0) + (f.properties.Total_biom || 0);
+  });
+  const empSorted = Object.entries(empBio).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  chartEmpresas.data.labels = empSorted.map(e => e[0].length > 20 ? e[0].slice(0, 18) + '…' : e[0]);
+  chartEmpresas.data.datasets[0].data = empSorted.map(e => Math.round(e[1]));
+  chartEmpresas.data.datasets[0].backgroundColor = empSorted.map((e, i) => {
+    const t = i / Math.max(empSorted.length - 1, 1);
+    return getBiomasaColor(t * 100, 0, 100);
+  });
+  chartEmpresas.update();
+
+  // Gráfico: Distribución por Especie
+  const spCount = {};
+  data.forEach(f => {
+    const sp = getMainSpecies(f.properties);
+    spCount[sp] = (spCount[sp] || 0) + 1;
+  });
+  const spSorted = Object.entries(spCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const pal = ['#2E9CA6','#E08D45','#4FB6A8','#D5514A','#8E6BB8','#E0B84D'];
+  chartEspecies.data.labels = spSorted.map(e => e[0]);
+  chartEspecies.data.datasets[0].data = spSorted.map(e => e[1]);
+  chartEspecies.data.datasets[0].backgroundColor = pal.slice(0, spSorted.length);
+  chartEspecies.update();
+
+  // Gráfico: Concesiones por Región
+  const regCount = {};
+  data.forEach(f => {
+    const r = f.properties.REGION || 'Sin dato';
+    regCount[r] = (regCount[r] || 0) + 1;
+  });
+  const regSorted = Object.entries(regCount).sort((a, b) => b[1] - a[1]);
+  chartRegion.data.labels = regSorted.map(e => e[0].replace('REGIÓN DE ', ''));
+  chartRegion.data.datasets[0].data = regSorted.map(e => e[1]);
+  chartRegion.update();
+}
+
+function updateInsights(data) {
+  const total = data.length;
+  if (total === 0) {
+    document.getElementById('insights').innerHTML = `
+      <div class="insight"><h3>Sin datos</h3><p>No hay concesiones con los filtros seleccionados.</p></div>
+      <div class="insight"><h3>Sin datos</h3><p>Ajusta los filtros para ver información.</p></div>
+      <div class="insight"><h3>Sin datos</h3><p>Prueba con menos restricciones.</p></div>
+    `;
+    return;
+  }
+
+  const empBio = {};
+  data.forEach(f => {
+    const e = f.properties.TITULAR || 'Sin dato';
+    empBio[e] = (empBio[e] || 0) + (f.properties.Total_biom || 0);
+  });
+  const totalBio = Object.values(empBio).reduce((s, v) => s + v, 0);
+  const top3Bio = Object.entries(empBio).sort((a, b) => b[1] - a[1]).slice(0, 3).reduce((s, e) => s + e[1], 0);
+  const pctConcentracion = totalBio > 0 ? Math.round(100 * top3Bio / totalBio) : 0;
+
+  const spCount = {};
+  data.forEach(f => {
+    const sp = getMainSpecies(f.properties);
+    spCount[sp] = (spCount[sp] || 0) + 1;
+  });
+  const top2Sp = Object.entries(spCount).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const pctEspecies = total > 0 ? Math.round(100 * (top2Sp.reduce((s, e) => s + e[1], 0)) / total) : 0;
+
+  const supRegion = {};
+  data.forEach(f => {
+    const r = f.properties.REGION || 'Sin dato';
+    supRegion[r] = (supRegion[r] || 0) + (f.properties.SUPERFICIE || 0);
+  });
+  const totalSup = Object.values(supRegion).reduce((s, v) => s + v, 0);
+  const supAysen = supRegion['REGIÓN DE AYSÉN DEL GENERAL CARLOS IBÁÑEZ DEL CAMPO'] || 0;
+  const pctAysen = totalSup > 0 ? Math.round(100 * supAysen / totalSup) : 0;
+
+  document.getElementById('insights').innerHTML = `
+    <div class="insight">
+      <h3>Concentración empresarial</h3>
+      <p>Las <b>3 principales empresas</b> concentran el <b>${pctConcentracion}%</b> de la biomasa total bajo el filtro actual.</p>
+    </div>
+    <div class="insight">
+      <h3>Especies dominantes</h3>
+      <p><b>${top2Sp.map(e => e[0]).join('</b> y <b>')}</b> representan el <b>${pctEspecies}%</b> de las concesiones activas.</p>
+    </div>
+    <div class="insight">
+      <h3>Región de Aysén</h3>
+      <p><b>Aysén</b> concentra el <b>${pctAysen}%</b> de la superficie total de concesiones, siendo el principal polo salmonicultor del país.</p>
+    </div>
+  `;
+}
+
+// ============================================================
+//  INICIO
+// ============================================================
+loadGeoJSON();
+</script>
+
+</body>
+</html>
