@@ -375,7 +375,7 @@ function getMainSpecies(prop) {
 
 async function loadGeoJSON() {
   try {
-       const res = await fetch('puntos.geojson');
+       const res = await fetch('data/puntos.geojson');
     if (!res.ok) throw new Error('Archivo no encontrado');
     const data = await res.json();
     processData(data);
