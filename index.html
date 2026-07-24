@@ -714,7 +714,7 @@ function updateCharts(data) {
   chartEmpresas.data.datasets[0].data = empSorted.map(e => Math.round(e[1]));
   chartEmpresas.data.datasets[0].backgroundColor = empSorted.map((e, i) => {
     const t = i / Math.max(empSorted.length - 1, 1);
-    return getBiomasaColor(t * 100, 0, 100);
+    return getBiomasaColor((1-t) * 100, 0, 100);
   });
   chartEmpresas.update();
 
